@@ -48,6 +48,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// -- GET / — 首页
+app.get('/', (_req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
 // -- POST /api/parse — 多平台视频解析
 app.post('/api/parse', async (req: Request, res: Response) => {
   try {
@@ -121,7 +125,10 @@ app.get('/api/download', async (req: Request, res: Response) => {
   }
 });
 
-// -- 404
+// -- 404 (仅 API / 未知路径)
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({ success: false, error: 'Not Found' });
+});
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ success: false, error: 'Not Found' });
 });
