@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>多平台视频解析下载</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:#0f0f0f;color:#e0e0e0;min-height:100vh;display:flex;justify-content:center;padding:40px 16px;
+  }
+  .container{width:100%;max-width:560px}
+
+  .header{text-align:center;margin-bottom:32px}
+  .header h1{font-size:28px;font-weight:700;background:linear-gradient(135deg,#fe2c55,#25f4ee,#fe2c55,#8b5cf6);background-size:300% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 3s infinite linear}
+  @keyframes shimmer{0%{background-position:0 0}100%{background-position:300% 0;}}
+  .header p{color:#666;margin-top:8px;font-size:14px}
+  .header .platforms{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .platforms span{padding:4px 12px;border-radius:20px;font-size:12px;border:1px solid #333;color:#888}
+  .platforms span.active{border-color:#25f4ee;color:#25f4ee}
+
+  .input-section{background:#1a1a1a;border-radius:16px;padding:24px;margin-bottom:24px;border:1px solid #2a2a2a}
+  .input-row{display:flex;gap:12px}
+  .input-row input{flex:1;padding:14px 16px;border-radius:12px;border:1px solid #333;background:#0f0f0f;color:#e0e0e0;font-size:15px;outline:none;transition:border-color .2s}
+  .input-row input:focus{border-color:#fe2c55}
+  .input-row input::placeholder{color:#555}
+  .btn-parse{padding:14px 24px;border-radius:12px;border:none;background:linear-gradient(135deg,#fe2c55,#ff4d6a);color:#fff;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap;transition:opacity .2s,transform .1s}
+  .btn-parse:hover{opacity:.9}
+  .btn-parse:active{transform:scale(.97)}
+  .btn-parse:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  .tips{margin-top:12px;font-size:12px;color:#555}
+  .tips code{background:#222;padding:2px 6px;border-radius:4px;font-size:11px}
+
+  .state-card{background:#1a1a1a;border-radius:16px;border:1px solid #2a2a2a;overflow:hidden}
+
+  /* -- loading -- */
+  .loading{display:none;flex-direction:column;align-items:center;padding:48px 24px}
+  .loading.active{display:flex}
+  .spinner{width:36px;height:36px;border:3px solid #333;border-top-color:#fe2c55;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading p{margin-top:16px;color:#777;font-size:14px}
+
+  /* -- error -- */
+  .error{display:none;padding:32px 24px;text-align:center}
+  .error.active{display:block}
+  .error-icon{font-size:40px;margin-bottom:12px}
+  .error-msg{color:#ff4d4f;font-size:15px}
+
+  /* -- result -- */
+  .result{display:none}
+  .result.active{display:block}
+  .result-header{padding:20px 24px 0;display:flex;gap:16px;align-items:flex-start}
+  .cover-img{width:120px;height:160px;border-radius:10px;object-fit:cover;background:#0f0f0f;flex-shrink:0}
+  .info{flex:1;min-width:0}
+  .info .platform-tag{display:inline-block;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;margin-bottom:6px}
+  .platform-tag.douyin{background:rgba(254,44,85,.2);color:#fe2c55}
+  .platform-tag.kuaishou{background:rgba(255,73,3,.2);color:#ff4903}
+  .platform-tag.bilibili{background:rgba(0,174,236,.2);color:#00aeec}
+  .platform-tag.rednote{background:rgba(255,36,66,.2);color:#ff2442}
+  .platform-tag.generic{background:rgba(100,100,255,.2);color:#a78bfa}
+
+  .info .title{font-size:16px;font-weight:600;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .info .author{margin-top:8px;font-size:14px;color:#25f4ee}
+  .info .video-id{margin-top:4px;font-size:12px;color:#555}
+
+  .result-actions{padding:20px 24px;display:flex;flex-direction:column;gap:10px}
+  .quality-btns{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .quality-label{font-size:13px;color:#888;margin-right:4px}
+  .q-btn{padding:6px 16px;border-radius:20px;border:1px solid #333;background:transparent;color:#888;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+  .q-btn:hover{border-color:#25f4ee;color:#25f4ee}
+  .q-btn.active{background:rgba(37,244,238,.15);border-color:#25f4ee;color:#25f4ee}
+  .q-btn:disabled{opacity:.3;cursor:not-allowed;border-color:transparent}
+  .q-btn:disabled:hover{border-color:transparent;color:#888}
+  .btn-download{display:block;width:100%;padding:14px;border-radius:12px;border:none;background:#25f4ee;color:#0f0f0f;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;text-align:center;transition:opacity .2s}
+  .btn-download:hover{opacity:.85}
+  .btn-download-watermark{display:block;width:100%;padding:12px;border-radius:12px;border:1px solid #333;background:transparent;color:#777;font-size:14px;cursor:pointer;text-decoration:none;text-align:center;transition:background .2s}
+  .btn-download-watermark:hover{background:#222;color:#ccc}
+
+  @media(max-width:480px){
+    .result-header{flex-direction:column;align-items:center;text-align:center}
+    .cover-img{width:160px;height:213px}
+    .input-row{flex-direction:column}
+    .btn-parse{width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎬 多平台视频解析</h1>
+    <p>支持抖音 / 快手 / 小红书 / B站 · 粘贴链接一键下载</p>
+    <div class="platforms" id="platformTags">
+      <span data-p="douyin">抖音</span>
+      <span data-p="kuaishou">快手</span>
+      <span data-p="rednote">小红书</span>
+      <span data-p="bilibili">B站</span>
+      <span data-p="generic">通用</span>
+    </div>
+  </div>
+
+  <div class="input-section">
+    <div class="input-row">
+      <input type="text" id="urlInput" placeholder="粘贴视频分享链接…" autocomplete="off" />
+      <button class="btn-parse" id="btnParse" onclick="doParse()">解析</button>
+    </div>
+    <div class="tips">
+      支持: <code>v.douyin.com</code> · <code>v.kuaishou.com</code> · <code>xhslink.com</code> · <code>bilibili.com</code> 等
+    </div>
+  </div>
+
+  <div class="state-card" id="stateCard">
+    <div class="loading" id="loading"><div class="spinner"></div><p>正在解析视频…</p></div>
+    <div class="error" id="error"><div class="error-icon">😞</div><p class="error-msg" id="errorMsg"></p></div>
+    <div class="result" id="result">
+      <div class="result-header">
+        <img class="cover-img" id="coverImg" src="" alt="封面" />
+        <div class="info">
+          <span class="platform-tag" id="platformTag"></span>
+          <div class="title" id="videoTitle"></div>
+          <div class="author" id="videoAuthor"></div>
+          <div class="video-id" id="videoId"></div>
+        </div>
+      </div>
+      <div class="result-actions">
+        <div class="quality-btns" id="qualityBtns">
+          <span class="quality-label">清晰度：</span>
+          <button class="q-btn active" data-q="4K">4K</button>
+          <button class="q-btn" data-q="1080p">1080p</button>
+          <button class="q-btn" data-q="720p">720p</button>
+          <button class="q-btn" data-q="540p">540p</button>
+        </div>
+        <a class="btn-download" id="btnDownload" href="#" target="_blank">⬇ 下载无水印视频</a>
+        <a class="btn-download-watermark" id="btnDownloadWM" href="#" target="_blank">下载原版（带水印）</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const PLATFORM_NAMES = {douyin:'抖音',kuaishou:'快手',rednote:'小红书',bilibili:'B站',generic:'通用解析'};
+
+let currentData = null;
+let currentQuality = '4K';  // 默认选中
+
+function showState(s) {
+  document.getElementById('loading').classList.toggle('active', s==='loading');
+  document.getElementById('error').classList.toggle('active', s==='error');
+  document.getElementById('result').classList.toggle('active', s==='result');
+}
+
+async function doParse() {
+  const input = document.getElementById('urlInput');
+  const url = input.value.trim();
+  if (!url) return showError('请先粘贴视频分享链接');
+
+  showState('loading');
+  currentData = null;
+  const btn = document.getElementById('btnParse');
+  btn.disabled = true; btn.textContent = '解析中…';
+
+  try {
+    const resp = await fetch('/api/parse', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({url}),
+    });
+    const json = await resp.json();
+    if (!json.success) throw new Error(json.error||'解析失败');
+    currentData = json.data;
+    currentQuality = '4K';
+    renderResult(json.data);
+    showState('result');
+
+    document.querySelectorAll('#platformTags span').forEach(s=>{
+      s.classList.toggle('active', s.dataset.p === json.data.platform);
+    });
+  } catch(err) {
+    showError(err.message||'网络错误');
+  } finally {
+    btn.disabled = false; btn.textContent = '解析';
+  }
+}
+
+function getDownloadUrl(quality) {
+  const d = currentData;
+  if (!d) return '#';
+  if (d.platform === 'douyin' && d.quality?.nowm?.[quality]) {
+    return '/api/download?url=' + encodeURIComponent(d.quality.nowm[quality]) + '&filename=' + encodeURIComponent(d.title);
+  }
+  return '/api/download?url=' + encodeURIComponent(d.video_url) + '&filename=' + encodeURIComponent(d.title);
+}
+
+function getWatermarkUrl(quality) {
+  const d = currentData;
+  if (!d || !d.video_url_watermark) return '#';
+  if (d.platform === 'douyin' && d.quality?.wm?.[quality]) {
+    return '/api/download?url=' + encodeURIComponent(d.quality.wm[quality]) + '&filename=' + encodeURIComponent(d.title + '（水印）');
+  }
+  return '/api/download?url=' + encodeURIComponent(d.video_url_watermark) + '&filename=' + encodeURIComponent(d.title + '（水印）');
+}
+
+function switchQuality(q) {
+  currentQuality = q;
+  document.querySelectorAll('.q-btn').forEach(b => b.classList.toggle('active', b.dataset.q === q));
+  document.getElementById('btnDownload').href = getDownloadUrl(q);
+  if (currentData?.video_url_watermark) {
+    document.getElementById('btnDownloadWM').href = getWatermarkUrl(q);
+  }
+}
+
+function renderResult(d) {
+  document.getElementById('coverImg').src = d.cover_url||'';
+  document.getElementById('videoTitle').textContent = d.title;
+  document.getElementById('videoAuthor').textContent = d.author ? '@'+d.author : '';
+  document.getElementById('videoId').textContent = d.aweme_id ? 'ID: '+d.aweme_id : '';
+
+  const tag = document.getElementById('platformTag');
+  tag.textContent = PLATFORM_NAMES[d.platform]||d.platform;
+  tag.className = 'platform-tag '+d.platform;
+
+  // 清晰度按钮: 仅抖音平台显示多档，其他只有默认 | 如果没有 quality 数据也只显示默认
+  const qBtns = document.getElementById('qualityBtns');
+  const hasQuality = d.platform === 'douyin' && d.quality;
+  qBtns.style.display = hasQuality ? 'flex' : 'none';
+
+  if (hasQuality) {
+    // 重置所有按钮状态
+    document.querySelectorAll('.q-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.q === '4K');
+    });
+    currentQuality = '4K';
+  }
+
+  document.getElementById('btnDownload').href = getDownloadUrl('1080p');
+
+  const btnWM = document.getElementById('btnDownloadWM');
+  if (d.video_url_watermark) {
+    btnWM.style.display = 'block';
+    btnWM.href = getWatermarkUrl('1080p');
+  } else {
+    btnWM.style.display = 'none';
+  }
+}
+
+// 清晰度切换事件
+document.getElementById('qualityBtns').addEventListener('click', function(e) {
+  if (e.target.classList.contains('q-btn')) {
+    switchQuality(e.target.dataset.q);
+  }
+});
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  showState('error');
+}
+
+document.getElementById('urlInput').addEventListener('keydown', function(e){
+  if (e.key==='Enter') doParse();
+});
+document.getElementById('urlInput').focus();
+</script>
+</body>
+</html>
