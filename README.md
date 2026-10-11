@@ -17,6 +17,22 @@ Linux 部署可用 `npx playwright install --with-deps chromium` 安装浏览器
 部署需要安装运行依赖中的 `playwright`、提供足够内存启动浏览器，并允许访问抖音及视频 CDN。
 `PORT` 环境变量可更改服务端口。
 
+## Render 部署
+
+现有 Node 服务使用以下配置：
+
+```sh
+# Build Command
+npm ci && PLAYWRIGHT_BROWSERS_PATH=0 npx playwright install chromium && npm run build
+# Start Command
+PLAYWRIGHT_BROWSERS_PATH=0 npm start
+```
+
+`PLAYWRIGHT_BROWSERS_PATH=0` 将浏览器安装到依赖目录，使构建产物和运行进程使用同一路径。
+仅安装 npm 依赖不会安装浏览器。云端不应开启本机的 `ALLOW_FAKE_IP`。
+Render 环境为浏览器详情请求预留 75 秒；日志记录失败时的页面标题和详情响应状态，便于区分网页验证、网络超时和缺失组件。
+部署成功只说明服务启动成功，还需用实际分享链接验证解析和下载。抖音可能限制云端出口访问。
+
 ## 抖音解析
 
 先检查分享页数据；缺失时启动独立、临时的无头浏览器，监听抖音页面自身发送的视频详情请求。
