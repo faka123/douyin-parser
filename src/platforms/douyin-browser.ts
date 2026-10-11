@@ -12,7 +12,7 @@ export async function fetchBrowserDetail(id: string): Promise<any> {
     try {
       browser = await chromium.launch({ channel: 'chrome', headless: true });
     } catch {
-      browser = await chromium.launch({ channel: 'chromium', headless: true }).catch(error => {
+      browser = await chromium.launch({ headless: true }).catch(error => {
         console.error('[douyin-browser] Chromium launch failed:', error.message);
         throw new Error('浏览器解析组件未安装，请运行 npx playwright install chromium');
       });
