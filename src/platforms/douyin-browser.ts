@@ -4,7 +4,7 @@ let active = 0;
 
 /** A fresh browser context lets Douyin's own scripts sign the detail request. */
 export async function fetchBrowserDetail(id: string): Promise<any> {
-  if (active >= 2) throw new Error('解析请求较多，请稍后重试');
+  if (active >= (process.env.RENDER ? 1 : 2)) throw new Error('解析请求较多，请稍后重试');
   active++;
   let browser: Browser | undefined;
   try {
@@ -18,6 +18,12 @@ export async function fetchBrowserDetail(id: string): Promise<any> {
       });
     }
     const page = await browser.newPage();
+    // Detail extraction does not need media playback or decorative page assets.
+    // Routing also disables the HTTP cache, reducing memory on small instances.
+    await page.route('**/*', route => {
+      const type = route.request().resourceType();
+      return ['image', 'media', 'font'].includes(type) ? route.abort() : route.continue();
+    });
     const timeoutMs = process.env.RENDER ? 75000 : 30000;
     let detailStatus: number | undefined;
     let resolveDetail: (value: any) => void;
