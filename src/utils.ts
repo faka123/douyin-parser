@@ -15,6 +15,9 @@ export interface VideoInfo {
   cover_url: string;
   video_url: string;           // 默认（最高）无水印地址
   video_url_watermark: string; // 默认（最高）带水印地址
+  video_candidates?: string[];
+  watermark_candidates?: string[];
+  quality_candidates?: Record<string, string[]>;
   quality?: VideoQuality;      // 多档清晰度（抖音）
 }
 
@@ -35,16 +38,33 @@ export function getMobileHeaders(extra?: Record<string, string>) {
   };
 }
 
-/** 从 URL 和 patterns 判断属于哪个平台 */
+/** Match platform hosts rather than keywords embedded in paths. */
 export function detectPlatform(url: string): string | null {
-  const rules: [string, RegExp[]][] = [
-    ['douyin', [/douyin\.com/]],
-    ['kuaishou', [/kuaishou\.com/]],
-    ['bilibili', [/bilibili\.com/]],
-    ['rednote', [/xiaohongshu\.com/, /xhslink\.com/]],
+  let host: string;
+  try { host = new URL(url).hostname.toLowerCase(); } catch { return null; }
+  const rules: [string, string[]][] = [
+    ['douyin', ['douyin.com', 'iesdouyin.com']],
+    ['kuaishou', ['kuaishou.com']],
+    ['bilibili', ['bilibili.com']],
+    ['rednote', ['xiaohongshu.com', 'xhslink.com']],
   ];
-  for (const [name, patterns] of rules) {
-    if (patterns.some((p) => p.test(url))) return name;
-  }
-  return null;
+  return rules.find(([, domains]) => domains.some(domain => host === domain || host.endsWith('.' + domain)))?.[0] || null;
+}
+
+export function extractUrl(raw: string): string {
+  const urls = raw.match(/https?:\/\/[^\s<>"'，。！？、）】]+/gi) || [];
+  const match = urls.find(url => detectPlatform(url));
+  if (match) return match;
+  throw new Error('未找到支持的视频链接，请粘贴抖音、快手、小红书或 B站分享链接');
+}
+
+export function downloadHeaders(platform: string) {
+  const referers: Record<string, string> = {
+    douyin: 'https://www.douyin.com/', bilibili: 'https://www.bilibili.com/',
+    kuaishou: 'https://www.kuaishou.com/', rednote: 'https://www.xiaohongshu.com/',
+  };
+  return {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    Referer: referers[platform] || referers.douyin,
+  };
 }

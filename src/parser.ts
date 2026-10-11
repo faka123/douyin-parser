@@ -3,10 +3,9 @@
  *
  * 架构:
  *   parse(url) → detectPlatform → 专用解析器
- *                              ↘ 失败 → SnapAny 通用解析器 (回退)
+ * 抖音分享页缺失详情时，使用浏览器获取详情。
  *
  * 已支持平台: 抖音 / 快手 / 小红书 / B站
- * 回退方案:   SnapAny API
  */
 
 import { detectPlatform, VideoInfo } from './utils';
@@ -14,7 +13,6 @@ import * as douyin from './platforms/douyin';
 import * as kuaishou from './platforms/kuaishou';
 import * as rednote from './platforms/rednote';
 import * as bilibili from './platforms/bilibili';
-import * as generic from './platforms/generic';
 
 const PARSERS: Record<string, { parse: (url: string) => Promise<VideoInfo> }> = {
   douyin,

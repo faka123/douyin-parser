@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { safeGet } from '../safe-http';
 import { VideoInfo } from '../utils';
 
 /**
@@ -42,7 +42,7 @@ export async function parse(url: string): Promise<VideoInfo> {
       ? `https://api.bilibili.com/x/web-interface/view?bvid=${vid.id}`
       : `https://api.bilibili.com/x/web-interface/view?aid=${vid.id}`;
 
-  const infoResp = await axios.get(infoUrl, { headers: API_HEADERS, timeout: 10000 });
+  const infoResp = await safeGet(infoUrl, { headers: API_HEADERS, timeout: 10000 });
   const infoData = infoResp.data?.data;
   if (!infoData) throw new Error('视频不存在或被删除');
 
@@ -52,7 +52,7 @@ export async function parse(url: string): Promise<VideoInfo> {
 
   // 2. 获取播放地址 — qn=80 表示最高清晰度
   const playUrl = `https://api.bilibili.com/x/player/playurl?otype=json&fnver=0&fnval=0&qn=80&bvid=${bvid}&cid=${cid}&platform=html5`;
-  const playResp = await axios.get(playUrl, { headers: API_HEADERS, timeout: 10000 });
+  const playResp = await safeGet(playUrl, { headers: API_HEADERS, timeout: 10000 });
 
   const durl: Array<{ url: string; size: number }> = playResp.data?.data?.durl || [];
   if (!durl.length) throw new Error('未找到可用的播放地址');

@@ -126,10 +126,7 @@
       <div class="result-actions">
         <div class="quality-btns" id="qualityBtns">
           <span class="quality-label">清晰度：</span>
-          <button class="q-btn active" data-q="4K">4K</button>
-          <button class="q-btn" data-q="1080p">1080p</button>
-          <button class="q-btn" data-q="720p">720p</button>
-          <button class="q-btn" data-q="540p">540p</button>
+
         </div>
         <a class="btn-download" id="btnDownload" href="#" target="_blank">⬇ 下载无水印视频</a>
         <a class="btn-download-watermark" id="btnDownloadWM" href="#" target="_blank">下载原版（带水印）</a>
@@ -142,7 +139,7 @@
 const PLATFORM_NAMES = {douyin:'抖音',kuaishou:'快手',rednote:'小红书',bilibili:'B站',generic:'通用解析'};
 
 let currentData = null;
-let currentQuality = '4K';  // 默认选中
+let currentQuality = '';
 
 function showState(s) {
   document.getElementById('loading').classList.toggle('active', s==='loading');
@@ -169,7 +166,7 @@ async function doParse() {
     const json = await resp.json();
     if (!json.success) throw new Error(json.error||'解析失败');
     currentData = json.data;
-    currentQuality = '4K';
+    currentQuality = '';
     renderResult(json.data);
     showState('result');
 
@@ -184,21 +181,11 @@ async function doParse() {
 }
 
 function getDownloadUrl(quality) {
-  const d = currentData;
-  if (!d) return '#';
-  if (d.platform === 'douyin' && d.quality?.nowm?.[quality]) {
-    return '/api/download?url=' + encodeURIComponent(d.quality.nowm[quality]) + '&filename=' + encodeURIComponent(d.title);
-  }
-  return '/api/download?url=' + encodeURIComponent(d.video_url) + '&filename=' + encodeURIComponent(d.title);
+  return currentData?.downloads?.qualities?.[quality] || currentData?.downloads?.default || '#';
 }
 
-function getWatermarkUrl(quality) {
-  const d = currentData;
-  if (!d || !d.video_url_watermark) return '#';
-  if (d.platform === 'douyin' && d.quality?.wm?.[quality]) {
-    return '/api/download?url=' + encodeURIComponent(d.quality.wm[quality]) + '&filename=' + encodeURIComponent(d.title + '（水印）');
-  }
-  return '/api/download?url=' + encodeURIComponent(d.video_url_watermark) + '&filename=' + encodeURIComponent(d.title + '（水印）');
+function getWatermarkUrl() {
+  return currentData?.downloads?.watermark || '#';
 }
 
 function switchQuality(q) {
@@ -220,25 +207,30 @@ function renderResult(d) {
   tag.textContent = PLATFORM_NAMES[d.platform]||d.platform;
   tag.className = 'platform-tag '+d.platform;
 
-  // 清晰度按钮: 仅抖音平台显示多档，其他只有默认 | 如果没有 quality 数据也只显示默认
   const qBtns = document.getElementById('qualityBtns');
-  const hasQuality = d.platform === 'douyin' && d.quality;
-  qBtns.style.display = hasQuality ? 'flex' : 'none';
-
-  if (hasQuality) {
-    // 重置所有按钮状态
-    document.querySelectorAll('.q-btn').forEach(b => {
-      b.classList.toggle('active', b.dataset.q === '4K');
+  const qualities = Object.keys(d.quality?.nowm || {});
+  qBtns.replaceChildren();
+  qBtns.style.display = qualities.length ? 'flex' : 'none';
+  if (qualities.length) {
+    const label = document.createElement('span');
+    label.className = 'quality-label';
+    label.textContent = '清晰度：';
+    qBtns.appendChild(label);
+    qualities.forEach(q => {
+      const button = document.createElement('button');
+      button.className = 'q-btn';
+      button.dataset.q = q;
+      button.textContent = q;
+      qBtns.appendChild(button);
     });
-    currentQuality = '4K';
   }
-
-  document.getElementById('btnDownload').href = getDownloadUrl('1080p');
+  currentQuality = qualities[0] || '';
+  switchQuality(currentQuality);
 
   const btnWM = document.getElementById('btnDownloadWM');
   if (d.video_url_watermark) {
     btnWM.style.display = 'block';
-    btnWM.href = getWatermarkUrl('1080p');
+    btnWM.href = getWatermarkUrl(currentQuality);
   } else {
     btnWM.style.display = 'none';
   }

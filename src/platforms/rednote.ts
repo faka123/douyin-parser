@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { safeGet } from '../safe-http';
 import { getMobileHeaders, VideoInfo } from '../utils';
 
 /**
@@ -41,13 +41,13 @@ export async function parse(url: string): Promise<VideoInfo> {
   // 短链重定向
   let resolvedUrl = url;
   if (url.includes('xhslink.com')) {
-    const r = await axios.get(url, { headers, maxRedirects: 5, timeout: 10000 });
+    const r = await safeGet(url, { headers, maxRedirects: 5, timeout: 10000 });
     resolvedUrl = r.request?.res?.responseUrl || r.request?.href || url;
   }
 
   const vid = resolvedUrl.split('/').filter(Boolean).pop() || '';
 
-  const resp = await axios.get(resolvedUrl, { headers, timeout: 15000 }).catch((err: any) => {
+  const resp = await safeGet(resolvedUrl, { headers, timeout: 15000 }).catch((err: any) => {
     const status = err?.response?.status;
     if (status === 401 || status === 403) throw new Error('小红书拒绝了该请求，请确认链接有效或稍后再试');
     throw new Error(`请求小红书页面失败: ${err.message}`);

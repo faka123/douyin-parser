@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { safeGet } from '../safe-http';
 import { getMobileHeaders, VideoInfo } from '../utils';
 
 /**
@@ -19,7 +19,7 @@ async function fetchFromApolloState(url: string): Promise<VideoInfo> {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36',
   };
 
-  const resp = await axios.get(url, { headers, timeout: 15000, maxRedirects: 5 }).catch((err: any) => {
+  const resp = await safeGet(url, { headers, timeout: 15000, maxRedirects: 5 }).catch((err: any) => {
     const status = err?.response?.status;
     if (status === 401 || status === 403) throw new Error('快手拒绝了该请求，请确认链接有效或稍后再试');
     throw new Error(`请求快手页面失败: ${err.message}`);
